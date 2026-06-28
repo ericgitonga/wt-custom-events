@@ -159,7 +159,7 @@ workflow:
     partial:
       df: ${{ workflow.events_add_spatial_index.return }}
       input_column_name: event_type
-      colormap: tab20b
+      colormap: tab10
       output_column_name: event_type_colormap
   - name: Set Bar Chart Title
     id: set_bar_chart_title
