@@ -1,0 +1,15 @@
+[project]
+name = "custom-events-tasks"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.entry-points."wt_registry"]
+custom_events_tasks = "custom_events_tasks"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/custom_events_tasks"]

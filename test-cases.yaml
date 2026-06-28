@@ -1,0 +1,98 @@
+all-events:
+  name: All Events
+  description: A demonstration of the custom-events workflow with event status grouping showing all events split by Active/Resolved.
+  params:
+    workflow_details:
+      name: "Custom Events Dashboard"
+      description: "A dashboard for visualizing events grouped by status."
+    er_client_name:
+      data_source:
+        name: "mep_dev"
+    time_range:
+      since: "2015-01-01T00:00:00"
+      until: "2015-12-31T23:59:59"
+      timezone:
+        label: "Africa/Nairobi (UTC+03:00)"
+        tzCode: "Africa/Nairobi"
+        name: "(UTC+03:00) Nairobi"
+        utc: "+03:00"
+    get_events_data:
+      event_types:
+        [
+          "hwc_rep",
+          "bird_sighting_rep",
+          "wildlife_sighting_rep",
+          "poacher_camp_rep",
+          "fire_rep",
+          "injured_animal_rep",
+        ]
+      include_null_geometry: false
+    events_bar_chart:
+      time_interval: "month"
+    filter_events:
+      bounding_box:
+        min_x: -180.0
+        max_x: 180.0
+        min_y: -90.0
+        max_y: 90.0
+      filter_point_coords: []
+    base_map_defs:
+      base_maps:
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+          opacity: 1.0
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.5
+          max_zoom: 17
+    events_meshgrid:
+      auto_scale_or_custom_cell_size:
+        auto_scale_or_custom: "Auto-scale"
+      crs: "EPSG:3857"
+
+weekly-bar-chart:
+  name: Weekly Bar Chart
+  description: A demonstration of the custom-events workflow with a weekly time interval bar chart.
+  params:
+    workflow_details:
+      name: "Custom Events Dashboard"
+      description: "A dashboard for visualizing events grouped by status (weekly)."
+    er_client_name:
+      data_source:
+        name: "mep_dev"
+    time_range:
+      since: "2015-01-01T00:00:00"
+      until: "2015-12-31T23:59:59"
+      timezone:
+        label: "UTC (UTC+00:00)"
+        tzCode: "UTC"
+        name: "(UTC+00:00) UTC"
+        utc: "+00:00"
+    get_events_data:
+      event_types:
+        [
+          "hwc_rep",
+          "bird_sighting_rep",
+          "wildlife_sighting_rep",
+          "poacher_camp_rep",
+          "fire_rep",
+          "injured_animal_rep",
+        ]
+      include_null_geometry: false
+    events_bar_chart:
+      time_interval: "week"
+    filter_events:
+      bounding_box:
+        min_x: -180.0
+        max_x: 180.0
+        min_y: -90.0
+        max_y: 90.0
+      filter_point_coords: []
+    base_map_defs:
+      base_maps:
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+          opacity: 1.0
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.5
+    events_meshgrid:
+      auto_scale_or_custom_cell_size:
+        auto_scale_or_custom: "Auto-scale"
+      crs: "EPSG:3857"

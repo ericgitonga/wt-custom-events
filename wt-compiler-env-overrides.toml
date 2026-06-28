@@ -1,0 +1,15 @@
+[feature.default.dependencies.opentelemetry-sdk]
+version = ">=1.20.0"
+channel = "conda-forge"
+
+[feature.default.dependencies.opentelemetry-exporter-gcp-trace]
+version = ">=1.6.0"
+channel = "conda-forge"
+
+[feature.runner.pypi-dependencies.custom-events-tasks]
+path = "/home/gitonga/Develop/PGAFF/repos/wt/wt-custom-events/custom-events-tasks"
+editable = true
+
+[feature.test.pypi-dependencies.custom-events-tasks]
+path = "/home/gitonga/Develop/PGAFF/repos/wt/wt-custom-events/custom-events-tasks"
+editable = true

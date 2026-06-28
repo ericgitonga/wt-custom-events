@@ -1,0 +1,524 @@
+id: custom_events
+
+requirements:
+  - name: ecoscope-platform
+    version: 2.13.0
+    channel: https://repo.prefix.dev/ecoscope-workflows/
+  # ecoscope-platform already declares this exact pydeck dependency. it is
+  # re-stated here as a workaround for a known issue. for further detail, see:
+  # https://github.com/wildlife-dynamics/wt/issues/167#issuecomment-4451993697
+  - name: pydeck
+    version: 0.9.2
+    channel: conda-forge
+  - name: custom-events-tasks
+    path: /home/gitonga/Develop/PGAFF/repos/wt/wt-custom-events/custom-events-tasks
+    editable: true
+
+rjsf-overrides:
+  properties:
+    get_events_data.properties.event_types.ecoscope:transform:
+      - transformer: EarthRangerEnumResolver
+        transformer_kws:
+          type: event_type
+          depends_on: properties.er_client_name.properties.data_source.properties.name
+  uiSchema:
+    get_events_data.event_types.ui:options.displayLabel: false
+    filter_events.filter_point_coords.items.ui:options.label: false
+    base_map_defs.base_maps.items.ui:options.label: false
+    Event Count Map.events_meshgrid.auto_scale_or_custom_cell_size:
+      anyOf:
+        - ui:help: Auto-scale for an optimized grid cell size based the workflow data or Customize to set a specific grid cell size.
+          ui:options:
+            label: false
+          auto_scale_or_custom:
+            ui:widget: hidden
+        - ui:options:
+            label: false
+          auto_scale_or_custom:
+            ui:widget: hidden
+      auto_scale_or_custom:
+        ui:widget: hidden
+
+task-instance-defaults:
+  skipif:
+    conditions:
+      - any_is_empty_df
+      - any_dependency_skipped
+
+workflow:
+  - name: Workflow Details
+    id: workflow_details
+    task: set_workflow_details
+  - name: Data Source
+    id: er_client_name
+    task: set_er_connection
+  - name: Time Range
+    id: time_range
+    task: set_time_range
+    partial:
+      time_format: '%d %b %Y %H:%M:%S'
+  - name: Extract Timezone Selection
+    id: get_timezone
+    task: get_timezone_from_time_range
+    partial:
+      time_range: ${{ workflow.time_range.return }}
+  - name: Event Types
+    id: get_events_data
+    task: get_events
+    partial:
+      client: ${{ workflow.er_client_name.return }}
+      time_range: ${{ workflow.time_range.return }}
+      event_columns:
+        - id
+        - time
+        - event_type
+        - event_category
+        - reported_by
+        - serial_number
+        - state
+        - geometry
+      raise_on_empty: false
+      include_details: false
+      include_updates: false
+      include_related_events: false
+      include_display_values: true
+  - name: Convert to timezone
+    id: convert_to_user_timezone
+    task: convert_values_to_timezone
+    partial:
+      df: ${{ workflow.get_events_data.return }}
+      timezone: ${{ workflow.get_timezone.return }}
+      columns:
+        - time
+  - name: Extract reported_by_name from Events
+    id: extract_reported_by
+    task: extract_value_from_json_column
+    partial:
+      df: ${{ workflow.convert_to_user_timezone.return }}
+      column_name: reported_by
+      field_name_options:
+        - name
+      output_type: str
+      output_column_name: reported_by_name
+  - name: Add Event Status Group
+    id: compute_event_status_group
+    task: add_event_status_group
+    partial:
+      df: ${{ workflow.extract_reported_by.return }}
+  - name: Group by Event Status
+    id: groupers
+    task: set_groupers
+    partial:
+      groupers:
+        - index_name: "event_status_group"
+  - task: extract_spatial_grouper_feature_group_names
+    id: spatial_group_ids
+    partial:
+      groupers: ${{ workflow.groupers.return }}
+  - task: get_spatial_features_group
+    id: fetch_all_spatial_feature_groups
+    partial:
+      client: ${{ workflow.er_client_name.return }}
+    map:
+      argnames: spatial_features_group_name
+      argvalues: ${{ workflow.spatial_group_ids.return }}
+  - task: resolve_spatial_feature_groups_for_spatial_groupers
+    id: resolved_groupers
+    skipif:
+      conditions:
+        - never
+    partial:
+      groupers: ${{ workflow.groupers.return }}
+      spatial_feature_groups: ${{ workflow.fetch_all_spatial_feature_groups.return }}
+  - name: Event Location Filter
+    id: filter_events
+    task: apply_reloc_coord_filter
+    partial:
+      df: ${{ workflow.compute_event_status_group.return }}
+      roi_gdf: null
+      roi_name: null
+      reset_index: true
+  - name: Add temporal index to Events
+    id: events_add_temporal_index
+    task: add_temporal_index
+    partial:
+      df: ${{ workflow.filter_events.return }}
+      time_col: time
+      groupers: ${{ workflow.resolved_groupers.return }}
+      cast_to_datetime: true
+      format: mixed
+  - name: Add spatial index to Events
+    id: events_add_spatial_index
+    task: add_spatial_index
+    partial:
+      gdf: ${{ workflow.events_add_temporal_index.return }}
+      groupers: ${{ workflow.resolved_groupers.return }}
+  - name: Events Colormap
+    id: events_colormap
+    task: apply_color_map
+    partial:
+      df: ${{ workflow.events_add_spatial_index.return }}
+      input_column_name: event_type
+      colormap: tab20b
+      output_column_name: event_type_colormap
+  - name: Set Bar Chart Title
+    id: set_bar_chart_title
+    task: set_string_var
+    partial:
+      var: Events Bar Chart
+  - name: Set Events Map Title
+    id: set_events_map_title
+    task: set_string_var
+    partial:
+      var: Events Map
+  - name: Set Pie Chart Title
+    id: set_pie_chart_title
+    task: set_string_var
+    partial:
+      var: Events Pie Chart
+  - name: Set Event Count Map Title
+    id: set_fd_map_title
+    task: set_string_var
+    partial:
+      var: Event Count Map
+  - name: Split Events by Group
+    id: split_event_groups
+    task: split_groups
+    partial:
+      df: ${{ workflow.events_colormap.return }}
+      groupers: ${{ workflow.resolved_groupers.return }}
+  - title: Events Bar Chart
+    type: task-group
+    description: The bar chart shows how many events of different types occurred over time. Choose the time interval for the x-axis to control how event counts are summarized over time.
+    tasks:
+      - name: null
+        id: events_bar_chart
+        task: draw_time_series_bar_chart
+        partial:
+          x_axis: time
+          y_axis: event_type_display
+          category: event_type_display
+          agg_function: count
+          color_column: event_type_colormap
+          plot_style:
+            xperiodalignment: middle
+          layout_style:
+            yaxis:
+              title: "Count of Events by Type"
+            xaxis:
+              title: "Time"
+          widget_id: ${{ workflow.set_bar_chart_title.return }}
+        mapvalues:
+          argnames: dataframe
+          argvalues: ${{ workflow.split_event_groups.return }}
+      - name: Persist Bar Chart as Text
+        id: events_bar_chart_html_url
+        task: persist_text
+        partial:
+          root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+          filename_suffix: v2
+        mapvalues:
+          argnames: text
+          argvalues: ${{ workflow.events_bar_chart.return }}
+      - name: Create Bar Plot Widget for Events
+        id: events_bar_chart_widget
+        task: create_plot_widget_single_view
+        skipif:
+          conditions:
+            - never
+        partial:
+          title: ${{ workflow.set_bar_chart_title.return }}
+        map:
+          argnames:
+            - view
+            - data
+          argvalues: ${{ workflow.events_bar_chart_html_url.return }}
+      - name: Merge Bar Plot Widget Views
+        id: grouped_bar_plot_widget_merge
+        task: merge_widget_views
+        partial:
+          widgets: ${{ workflow.events_bar_chart_widget.return }}
+  - name: Rename columns for map tooltip display
+    id: rename_display_columns
+    task: map_columns
+    partial:
+      drop_columns: []
+      retain_columns: []
+      rename_columns:
+        serial_number: Event Serial
+        time: Event Time
+        event_type_display: Event Type
+        reported_by_name: Reported By
+      raise_if_not_found: true
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.split_event_groups.return }}
+  - name: Map Base Layers
+    id: base_map_defs
+    task: set_base_maps
+  - name: Create map layer from grouped Events
+    id: grouped_events_map_layer
+    task: create_point_layer
+    skipif:
+      conditions:
+        - any_is_empty_df
+        - any_dependency_skipped
+        - all_geometry_are_none
+    partial:
+      layer_style:
+        fill_color_column: event_type_colormap
+        get_radius: 5
+      legend:
+        label_column: Event Type
+        color_column: event_type_colormap
+      tooltip_columns:
+        - Event Serial
+        - Event Time
+        - Event Type
+        - Reported By
+    mapvalues:
+      argnames: geodataframe
+      argvalues: ${{ workflow.rename_display_columns.return }}
+  - name: Draw Ecomap from grouped Events
+    id: grouped_events_ecomap
+    task: draw_ecomap
+    partial:
+      title: null
+      tile_layers: ${{ workflow.base_map_defs.return }}
+      north_arrow_style:
+        placement: top-left
+      legend_style:
+        title: Event Type
+        format_title: false
+        placement: bottom-right
+      static: false
+      max_zoom: 20
+      widget_id: ${{ workflow.set_events_map_title.return }}
+    mapvalues:
+      argnames: geo_layers
+      argvalues: ${{ workflow.grouped_events_map_layer.return }}
+  - name: Persist grouped Events Ecomap as Text
+    id: grouped_events_ecomap_html_url
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: v2
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.grouped_events_ecomap.return }}
+  - name: Create grouped Events Map Widget
+    id: grouped_events_map_widget
+    task: create_map_widget_single_view
+    skipif:
+      conditions:
+        - never
+    partial:
+      title: ${{ workflow.set_events_map_title.return }}
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.grouped_events_ecomap_html_url.return }}
+  - name: Merge Events Map Widget Views
+    id: grouped_events_map_widget_merge
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.grouped_events_map_widget.return }}
+  - name: Draw Pie Chart for Events
+    id: grouped_events_pie_chart
+    task: draw_pie_chart
+    partial:
+      value_column: event_type_display
+      color_column: event_type_colormap
+      plot_style:
+        textinfo: value
+      label_column: null
+      layout_style: null
+      widget_id: ${{ workflow.set_pie_chart_title.return }}
+    mapvalues:
+      argnames: dataframe
+      argvalues: ${{ workflow.split_event_groups.return }}
+  - name: Persist Pie Chart as Text
+    id: grouped_pie_chart_html_urls
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: v2
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.grouped_events_pie_chart.return }}
+  - name: Create Plot Widget for Events
+    id: grouped_events_pie_chart_widgets
+    task: create_plot_widget_single_view
+    skipif:
+      conditions:
+        - never
+    partial:
+      title: ${{ workflow.set_pie_chart_title.return }}
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.grouped_pie_chart_html_urls.return }}
+  - name: Merge Pie Chart Widget Views
+    id: grouped_events_pie_widget_merge
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.grouped_events_pie_chart_widgets.return }}
+  - title: Event Count Map
+    type: task-group
+    description: These settings generate a grid-based heatmap showing where events are concentrated.
+    tasks:
+      - name: null
+        id: events_meshgrid
+        task: create_meshgrid
+        skipif:
+          conditions:
+            - any_is_empty_df
+            - any_dependency_skipped
+            - all_geometry_are_none
+        partial:
+          aoi: ${{ workflow.events_add_spatial_index.return }}
+          intersecting_only: false
+      - name: Calculate Event Counts
+        id: grouped_events_count_map
+        task: calculate_feature_density
+        partial:
+          meshgrid: ${{ workflow.events_meshgrid.return }}
+          geometry_type: point
+          sum_column: null
+        mapvalues:
+          argnames: geodataframe
+          argvalues: ${{ workflow.split_event_groups.return }}
+      - name: Sort Event Counts By Classification
+        id: sort_event_count_values
+        task: sort_values
+        partial:
+          column_name: density
+          ascending: true
+          na_position: last
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.grouped_events_count_map.return }}
+      - name: Drop nan values for map display
+        id: drop_nan_values
+        task: drop_nan_values_by_column
+        partial:
+          column_name: density
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.sort_event_count_values.return }}
+      - name: Classify Event Count Values
+        id: classify_fd
+        task: apply_classification
+        partial:
+          input_column_name: density
+          output_column_name: density_bins
+          classification_options:
+            scheme: equal_interval
+            k: 10
+          label_options:
+            label_ranges: true
+            label_decimals: 0
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.drop_nan_values.return }}
+      - name: Event Count Colormap
+        id: grouped_fd_colormap
+        task: apply_color_map
+        partial:
+          input_column_name: density_bins
+          colormap: RdYlGn_r
+          output_column_name: density_colormap
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.classify_fd.return }}
+      - id: rename_density_output
+        task: map_columns
+        partial:
+          drop_columns: []
+          retain_columns: []
+          rename_columns:
+            density: Count
+          raise_if_not_found: true
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.grouped_fd_colormap.return }}
+      - name: Create map layer from Event Counts
+        id: grouped_fd_map_layer
+        task: create_polygon_layer
+        skipif:
+          conditions:
+            - any_is_empty_df
+            - any_dependency_skipped
+            - all_geometry_are_none
+        partial:
+          layer_style:
+            fill_color_column: density_colormap
+            get_line_width: 0
+            opacity: 0.400000
+          legend:
+            label_column: density_bins
+            color_column: density_colormap
+          tooltip_columns:
+            - Count
+        mapvalues:
+          argnames: geodataframe
+          argvalues: ${{ workflow.rename_density_output.return}}
+      - name: Draw Ecomap from Event Counts
+        id: grouped_fd_ecomap
+        task: draw_ecomap
+        partial:
+          title: null
+          tile_layers: ${{ workflow.base_map_defs.return }}
+          north_arrow_style:
+            placement: top-left
+          legend_style:
+            title: Number Of Events
+            format_title: false
+            placement: bottom-right
+          static: false
+          max_zoom: 20
+          widget_id: ${{ workflow.set_fd_map_title.return }}
+        mapvalues:
+          argnames: geo_layers
+          argvalues: ${{ workflow.grouped_fd_map_layer.return }}
+      - name: Persist Event Count Ecomap as Text
+        id: grouped_fd_ecomap_html_url
+        task: persist_text
+        partial:
+          root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+          filename_suffix: v2
+        mapvalues:
+          argnames: text
+          argvalues: ${{ workflow.grouped_fd_ecomap.return }}
+      - name: Create Event Count Map Widget
+        id: grouped_fd_map_widget
+        task: create_map_widget_single_view
+        skipif:
+          conditions:
+            - never
+        partial:
+          title: ${{ workflow.set_fd_map_title.return }}
+        map:
+          argnames:
+            - view
+            - data
+          argvalues: ${{ workflow.grouped_fd_ecomap_html_url.return }}
+      - name: Merge Event Count Widget Views
+        id: grouped_fd_map_widget_merge
+        task: merge_widget_views
+        partial:
+          widgets: ${{ workflow.grouped_fd_map_widget.return }}
+  - name: Create Dashboard with Map Widgets
+    id: events_dashboard
+    task: gather_dashboard
+    partial:
+      details: ${{ workflow.workflow_details.return}}
+      widgets:
+        - ${{ workflow.grouped_bar_plot_widget_merge.return }}
+        - ${{ workflow.grouped_events_map_widget_merge.return }}
+        - ${{ workflow.grouped_events_pie_widget_merge.return }}
+        - ${{ workflow.grouped_fd_map_widget_merge.return }}
+      groupers: ${{ workflow.resolved_groupers.return }}
+      time_range: ${{ workflow.time_range.return}}
