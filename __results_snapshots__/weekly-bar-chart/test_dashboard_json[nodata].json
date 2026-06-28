@@ -5,8 +5,12 @@
       "schema": {
         "properties": {
           "event_status_group": {
-            "default": "Unknown",
+            "default": "All",
             "oneOf": [
+              {
+                "const": "All",
+                "title": "All"
+              },
               {
                 "const": "Unknown",
                 "title": "Unknown"
@@ -33,6 +37,36 @@
       "title": "Custom Events Dashboard"
     },
     "views": {
+      "{\"event_status_group\": \"All\"}": [
+        {
+          "data": "tmpfile",
+          "id": 0,
+          "is_filtered": true,
+          "title": "Events Bar Chart",
+          "widget_type": "graph"
+        },
+        {
+          "data": "tmpfile",
+          "id": 1,
+          "is_filtered": true,
+          "title": "Events Map",
+          "widget_type": "map"
+        },
+        {
+          "data": "tmpfile",
+          "id": 2,
+          "is_filtered": true,
+          "title": "Events Pie Chart",
+          "widget_type": "graph"
+        },
+        {
+          "data": "tmpfile",
+          "id": 3,
+          "is_filtered": true,
+          "title": "Event Count Map",
+          "widget_type": "map"
+        }
+      ],
       "{\"event_status_group\": \"Unknown\"}": [
         {
           "data": "tmpfile",
