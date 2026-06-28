@@ -8,6 +8,7 @@ _STATE_TO_GROUP = {
     "scheduled": "Active",
     "overdue": "Active",
     "done": "Resolved",
+    "resolved": "Resolved",
     "cancelled": "Resolved",
 }
 
@@ -16,7 +17,7 @@ _STATE_TO_GROUP = {
 def add_event_status_group(df: AnyDataFrame) -> AnyDataFrame:
     result = df.copy()
     if "state" in df.columns:
-        result["event_status_group"] = df["state"].map(_STATE_TO_GROUP)
+        result["event_status_group"] = df["state"].str.lower().map(_STATE_TO_GROUP).fillna("Unknown")
     else:
         result["event_status_group"] = "Unknown"
     return cast(AnyDataFrame, result)
