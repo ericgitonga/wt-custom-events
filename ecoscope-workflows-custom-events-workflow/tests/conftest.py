@@ -36,8 +36,16 @@ from wt_runner.tracing import (
 )
 
 ARTIFACTS = Path(__file__).parent.parent
-SNAPSHOT_DIRNAME = ARTIFACTS.parent / "__results_snapshots__"
-SNAPSHOT_DIFF_OUTPUT_DIRNAME = ARTIFACTS.parent / "__diff_output__"
+_WORKFLOW_DATA_DIR = (
+    Path.home()
+    / ".config"
+    / "ecoscope-desktop"
+    / "data"
+    / "workflows"
+    / "ericgitonga-wt-custom-events"
+)
+SNAPSHOT_DIRNAME = _WORKFLOW_DATA_DIR / "__results_snapshots__"
+SNAPSHOT_DIFF_OUTPUT_DIRNAME = _WORKFLOW_DATA_DIR / "__diff_output__"
 TEST_CASES_YAML = ARTIFACTS.parent / "test-cases.yaml"
 MATCHSPEC_OVERRIDE = "ecoscope-workflows-custom-events-workflow"
 RESULTS_ENV_VAR = "ECOSCOPE_WORKFLOWS_RESULTS"

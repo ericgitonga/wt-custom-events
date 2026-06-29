@@ -38,3 +38,7 @@ cython_debug/
 
 .vscode
 .claude
+
+# Test result snapshots and diffs (stored in ecoscope-desktop data dir, not repo)
+__results_snapshots__/
+__diff_output__/
