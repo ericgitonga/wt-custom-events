@@ -23,7 +23,7 @@ All four widgets update simultaneously when you switch the **Event status group*
 
 ## Documentation
 
-For full configuration reference, methodology, and troubleshooting see the [Technical Guide](docs/technical_guide.md).
+For full configuration reference, methodology, and troubleshooting see the [Technical Guide](docs/technical_guide.pdf).
 
 ## Development
 
