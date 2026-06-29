@@ -1,6 +1,6 @@
 # Custom Events Workflow
 
-**Version 0.1.1** · Works on Ecoscope Desktop (Windows and macOS) and Ecoscope Web
+**Version 0.1.2** · Works on Ecoscope Desktop (Windows and macOS) and Ecoscope Web
 
 ## Introduction
 
