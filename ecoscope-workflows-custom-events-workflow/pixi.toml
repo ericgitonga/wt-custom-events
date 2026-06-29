@@ -59,7 +59,7 @@ version = ">=1.6.0"
 channel = "https://conda.anaconda.org/conda-forge/"
 
 [pypi-dependencies.custom-events-tasks]
-path = "/home/gitonga/Develop/PGAFF/repos/wt/wt-custom-events/custom-events-tasks"
+path = "./custom-events-tasks"
 editable = true
 
 [feature.runner.dependencies.wt-runner]
@@ -67,7 +67,7 @@ version = ">=0.3.0,<1.0.0"
 channel = "https://repo.prefix.dev/ecoscope-workflows/"
 
 [feature.runner.pypi-dependencies.custom-events-tasks]
-path = "/home/gitonga/Develop/PGAFF/repos/wt/wt-custom-events/custom-events-tasks"
+path = "./custom-events-tasks"
 editable = true
 
 [feature.runner.tasks]
@@ -109,7 +109,7 @@ version = ">=1.52.0"
 channel = "https://conda.anaconda.org/microsoft/"
 
 [feature.test.pypi-dependencies.custom-events-tasks]
-path = "/home/gitonga/Develop/PGAFF/repos/wt/wt-custom-events/custom-events-tasks"
+path = "./custom-events-tasks"
 editable = true
 
 [feature.test.tasks]
